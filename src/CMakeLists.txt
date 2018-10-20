@@ -1,6 +1,11 @@
 cmake_minimum_required( VERSION 3.7 )
-project( Demo )
+project( demo )
+
+set(CMAKE_CXX_FLAGS "-O2 -Wall -std=c++17")
+
 find_package( OpenCV REQUIRED )
 include_directories( ${OpenCV_INCLUDE_DIRS} )
-add_executable( Demo demo.cpp )
-target_link_libraries( Demo ${OpenCV_LIBS} )
+
+add_executable( demo demo.cpp label_parser.cpp utils.cpp)
+
+target_link_libraries( demo ${OpenCV_LIBS} )
