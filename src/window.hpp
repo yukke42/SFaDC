@@ -9,9 +9,8 @@
 #ifndef WINDOW_CPP
 #define WINDOW_CPP
 
-#include <sstream>
-#include <iostream>
 #include <opencv2/opencv.hpp>
+#include <eigen3/Eigen/Dense>
 
 #define WINDOW_NAME "demo"
 
@@ -31,18 +30,14 @@ class Window
   cv::Mat sub_window;
 
 public:
-  void ReadImage(const unsigned int, const unsigned int);
+  void ReadImage(const std::string, const unsigned int);
   void InitSubWindow();
   void Concat();
   void Show();
   int WaitKey();
 
-  void Rectangle(const float, const float, const float, const float);
+  void DrawBoundingBox(const double, const double, const double, const double, const double);
   void PutImageIdText(const int, const int);
-
-private:
-  int ToXWinCoord(const float);
-  int ToZWinCoord(const float);
 };
 
 #endif

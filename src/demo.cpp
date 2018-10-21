@@ -2,17 +2,27 @@
     demo.cpp
 */
 
+#include <iostream>
 #include <vector>
-
-#include <opencv2/opencv.hpp>
 
 #include "label_parser.hpp"
 #include "window.hpp"
 
-int main()
+int main(int argc, char *argv[])
 {
-    std::vector<Tracklet> tracklets;
-    tracklets = ParseLabelFile("../../mini_datasets/training/label_02/0000.txt");
+    if (argc < 2)
+    {
+        std::cout << "Usage: ./demo IMAGE_SET_ID" << std::endl;
+        return 1;
+    }
+    const unsigned int imageSetsId = atoi(argv[1]);
+
+    const std::string datasetsRootDir = "../../datasets/training/";
+    std::ostringstream image_sets_id_str, image_dirpath;
+    image_sets_id_str << std::setw(4) << std::setfill('0') << imageSetsId;
+    const std::string labelFilePath = datasetsRootDir + "label_02/" + image_sets_id_str.str() + ".txt";
+    const std::string imagesetsDirPath = datasetsRootDir + "image_02/" + image_sets_id_str.str() + "/";
+    std::vector<Tracklet> tracklets = ParseLabelFile(labelFilePath);
 
     Window win;
 
@@ -21,7 +31,7 @@ int main()
     while (1)
     {
         /*
-            1. read an images and crate a main window
+            1. read an image and crate a main window
             2. create a sub window (show Bounding Boxes of objects from the bird's eye view)
             3. draw obj pos to the sub window
             4. concat them
@@ -29,7 +39,7 @@ int main()
             6. wait a keybord input
         */
 
-        win.ReadImage(0, image_id);
+        win.ReadImage(imagesetsDirPath, image_id);
         win.InitSubWindow();
         win.PutImageIdText(image_id, imageLast);
 
@@ -40,10 +50,15 @@ int main()
             if (tracklets[obj_i].obj_type == "DontCare")
                 continue;
 
-            win.Rectangle(tracklets[obj_i].x_3d,
-                          tracklets[obj_i].z_3d,
-                          tracklets[obj_i].w_3d,
-                          tracklets[obj_i].l_3d);
+            // calc obj yaw
+
+            std::cout << tracklets[obj_i].obj_type << tracklets[obj_i].yaw_3d << std::endl;
+
+            win.DrawBoundingBox(tracklets[obj_i].x_3d,
+                                tracklets[obj_i].z_3d,
+                                tracklets[obj_i].w_3d,
+                                tracklets[obj_i].l_3d,
+                                tracklets[obj_i].yaw_3d);
         }
 
         win.Concat();

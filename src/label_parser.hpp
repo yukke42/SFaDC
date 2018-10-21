@@ -35,22 +35,22 @@ struct Tracklet
     std::string obj_type;
     int truncation;
     int occlusion;
-    float alpha;
+    double alpha;
 
-    float x_2d_left;
-    float x_2d_right;
-    float y_2d_top;
-    float y_2d_bottom;
+    double x_2d_left;
+    double x_2d_right;
+    double y_2d_top;
+    double y_2d_bottom;
 
-    float h_3d;
-    float w_3d;
-    float l_3d;
-    float x_3d;
-    float y_3d;
-    float z_3d;
-    float yaw_3d;
+    double h_3d;
+    double w_3d;
+    double l_3d;
+    double x_3d;
+    double y_3d;
+    double z_3d;
+    double yaw_3d;
 
-    float score;
+    double score;
 };
 
 std::vector<Tracklet> ParseLabelFile(std::string);

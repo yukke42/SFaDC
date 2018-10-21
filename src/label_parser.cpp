@@ -21,7 +21,7 @@ std::vector<Tracklet> ParseLabelFile(std::string filepath)
     {
         std::vector<std::string> splited_row = split(row, ' ');
 
-        float score = -1;
+        double score = -1;
         if (splited_row.size() == 18)
             score = std::stof(splited_row[17]);
 

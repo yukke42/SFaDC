@@ -4,13 +4,16 @@
 
 #include "window.hpp"
 
-void Window::ReadImage(const unsigned int imageSetsId, const unsigned int imageId)
+#include <sstream>
+#include <iostream>
+
+#include <opencv2/core/core.hpp>
+
+void Window::ReadImage(const std::string imagesetsDirPath, const unsigned int imageId)
 {
-    const std::string imagesDirRoot = "../../mini_datasets/training/image_02/";
-    std::ostringstream image_sets_id_str, image_id_str;
-    image_sets_id_str << std::setw(4) << std::setfill('0') << imageSetsId;
+    std::ostringstream image_id_str;
     image_id_str << std::setw(6) << std::setfill('0') << imageId;
-    const std::string imageFilePath = imagesDirRoot + image_sets_id_str.str() + "/" + image_id_str.str() + ".png";
+    const std::string imageFilePath = imagesetsDirPath + image_id_str.str() + ".png";
     std::cout << "Read image: " << imageFilePath << std::endl;
     window = cv::imread(imageFilePath);
 }
@@ -64,37 +67,61 @@ int Window::WaitKey()
     return cv::waitKey();
 }
 
-void Window::Rectangle(const float xCam, const float zCam, const float w, const float l)
+void Window::DrawBoundingBox(const double xCam, const double zCam, const double w, const double l, const double yaw)
 {
     /*
-        1. calc the pos and angle of a object (TODO)
+        1. calc the pos 
         2. transform camera coordinates to sub_window coordinates
         3. draw a rectangle
     */
 
-    const int xWinBottomLeft = ToXWinCoord(xCam - w / 2);
-    const int zWinBottomLeft = ToZWinCoord(zCam - l / 2);
-    const int xWinTopRight = ToXWinCoord(xCam + w / 2);
-    const int zWinTopRight = ToZWinCoord(zCam + l / 2);
+    Eigen::Vector2d objCenterCamCoord(xCam, zCam);
+    Eigen::Matrix2d rotateMatrix;
+    const float angle_rad = -yaw + M_PI / 2;
+    rotateMatrix << std::cos(angle_rad), -std::sin(angle_rad),
+        std::sin(angle_rad), std::cos(angle_rad);
 
-    cv::rectangle(sub_window,
-                  cv::Point(xWinBottomLeft, zWinBottomLeft),
-                  cv::Point(xWinTopRight, zWinTopRight),
-                  RED);
+    Eigen::Vector2d topRightObjCoord(w / 2, l / 2);
+    Eigen::Vector2d topLeftObjCoord(-w / 2, l / 2);
+    Eigen::Vector2d bottomLeftObjCoord(-w / 2, -l / 2);
+    Eigen::Vector2d bottomRightObjCoord(w / 2, -l / 2);
+
+    Eigen::Vector2d topRightCamCoord = rotateMatrix * topRightObjCoord + objCenterCamCoord;
+    Eigen::Vector2d topLeftCamCoord = rotateMatrix * topLeftObjCoord + objCenterCamCoord;
+    Eigen::Vector2d bottomLeftCamCoord = rotateMatrix * bottomLeftObjCoord + objCenterCamCoord;
+    Eigen::Vector2d bottomRightCamCoord = rotateMatrix * bottomRightObjCoord + objCenterCamCoord;
+
+    Eigen::Vector2d winCoordCenter(SUB_WINDOW_X_AXIS, SUB_WINDOW_Z_AXIS);
+    rotateMatrix << 10, 0, 0, -10;
+    Eigen::Vector2i topRightWinCoord = (rotateMatrix * topRightCamCoord + winCoordCenter).cast<int>();
+    Eigen::Vector2i topLeftWinCoord = (rotateMatrix * topLeftCamCoord + winCoordCenter).cast<int>();
+    Eigen::Vector2i bottomLeftWinCoord = (rotateMatrix * bottomLeftCamCoord + winCoordCenter).cast<int>();
+    Eigen::Vector2i bottomRightWinCoord = (rotateMatrix * bottomRightCamCoord + winCoordCenter).cast<int>();
+
+    cv::line(sub_window,
+             cv::Point(topRightWinCoord[0], topRightWinCoord[1]),
+             cv::Point(topLeftWinCoord[0], topLeftWinCoord[1]),
+             RED,
+             2);
+    cv::line(sub_window,
+             cv::Point(topLeftWinCoord[0], topLeftWinCoord[1]),
+             cv::Point(bottomLeftWinCoord[0], bottomLeftWinCoord[1]),
+             RED,
+             2);
+    cv::line(sub_window,
+             cv::Point(bottomLeftWinCoord[0], bottomLeftWinCoord[1]),
+             cv::Point(bottomRightWinCoord[0], bottomRightWinCoord[1]),
+             RED,
+             2);
+    cv::line(sub_window,
+             cv::Point(bottomRightWinCoord[0], bottomRightWinCoord[1]),
+             cv::Point(topRightWinCoord[0], topRightWinCoord[1]),
+             RED,
+             2);
 }
 
 void Window::PutImageIdText(const int frameNo, const int fraameLast)
 {
     std::string text = std::to_string(frameNo) + " / " + std::to_string(fraameLast);
     cv::putText(sub_window, text, cv::Point(10, 40), cv::FONT_HERSHEY_SIMPLEX, 1, BLACK);
-}
-
-int Window::ToXWinCoord(const float xCam)
-{
-    return (int)(xCam * 10) + SUB_WINDOW_X_AXIS;
-}
-
-int Window::ToZWinCoord(const float zCam)
-{
-    return -(int)(zCam * 10) + SUB_WINDOW_Z_AXIS;
 }
