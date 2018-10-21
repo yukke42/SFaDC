@@ -53,6 +53,6 @@ struct Tracklet
     float score;
 };
 
-std::vector<Tracklet> parse_label_file(std::string);
+std::vector<Tracklet> ParseLabelFile(std::string);
 
 #endif

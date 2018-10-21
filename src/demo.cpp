@@ -2,11 +2,8 @@
 demo.cpp
 */
 
-#include "demo.hpp"
-
 #include <iostream>
 #include <vector>
-
 
 #include "label_parser.hpp"
 #include "window.hpp"
@@ -14,33 +11,49 @@ demo.cpp
 int main()
 {
     std::vector<Tracklet> tracklets;
-    tracklets = parse_label_file("../../mini_datasets/training/label_02/0000.txt");
+    tracklets = ParseLabelFile("../../mini_datasets/training/label_02/0000.txt");
 
     Window window;
 
-    for (unsigned int obj_i = 1; obj_i < tracklets.size(); obj_i++)
+    int frame_no = 0;
+    const int frameLast = tracklets[tracklets.size() - 1].frame_no;
+    while (1)
     {
-        if (tracklets[obj_i].obj_type != "Car")
-            continue;
-        if (tracklets[obj_i].occlusion != 0)
-            continue;
+        window.PutFrameNoText(frame_no, frameLast);
 
-        window.rectangle(tracklets[obj_i].x_3d,
-                         tracklets[obj_i].z_3d,
-                         tracklets[obj_i].w_3d,
-                         tracklets[obj_i].l_3d);
+        for (unsigned int obj_i = 1; obj_i < tracklets.size(); obj_i++)
+        {
+            if (tracklets[obj_i].frame_no != frame_no)
+                continue;
+            if (tracklets[obj_i].obj_type == "DontCare")
+                continue;
 
-        std::cout << tracklets[obj_i].h_3d << std::endl;
-        std::cout << tracklets[obj_i].w_3d << std::endl;
-        std::cout << tracklets[obj_i].l_3d << std::endl;
-        std::cout << tracklets[obj_i].x_3d << std::endl;
-        std::cout << tracklets[obj_i].y_3d << std::endl;
-        std::cout << tracklets[obj_i].z_3d << std::endl;
+            window.Rectangle(tracklets[obj_i].x_3d,
+                             tracklets[obj_i].z_3d,
+                             tracklets[obj_i].w_3d,
+                             tracklets[obj_i].l_3d);
+        }
 
-        break;
+        window.Show();
+
+        int pressed_key = window.WaitKey();
+        if (pressed_key == 113) // q
+        {
+            break;
+        }
+        else if (pressed_key == 110) // n
+        {
+            if (frame_no < frameLast)
+                frame_no++;
+        }
+        else if (pressed_key == 112) // p
+        {
+            if (frame_no > 1)
+                frame_no--;
+        }
+
+        window.Refresh();
     }
-
-    window.show();
 
     return 0;
 }

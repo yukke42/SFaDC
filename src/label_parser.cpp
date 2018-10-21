@@ -5,7 +5,7 @@
 
 #include "utils.hpp"
 
-std::vector<Tracklet> parse_label_file(std::string filepath)
+std::vector<Tracklet> ParseLabelFile(std::string filepath)
 {
     std::ifstream stream(filepath);
 
