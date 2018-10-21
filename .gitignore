@@ -1,4 +1,6 @@
 mini_datasets/
+datasets/
 .vscode
 
 build/
+tmp/

@@ -21,4 +21,8 @@ RUN aria2c -x 5 https://github.com/opencv/opencv/archive/3.4.3.zip \
 ## add command to delete zipfile and unzipped directories
 ### it takes a long time to build opencv, so add other libralies bellow. ###
 
+# https://askubuntu.com/questions/860207/how-to-install-eigen-3-3-in-ubuntu-14-04
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libeigen3-dev
+
 WORKDIR /root/projects
