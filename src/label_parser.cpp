@@ -26,7 +26,7 @@ std::vector<Tracklet> ParseLabelFile(std::string filepath)
             score = std::stof(splited_row[17]);
 
         Tracklet tracklet_tmp = {
-            std::stoi(splited_row[0]),
+            (unsigned int)std::stoi(splited_row[0]),
             std::stoi(splited_row[1]),
             splited_row[2],
             std::stoi(splited_row[3]),

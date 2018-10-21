@@ -1,19 +1,24 @@
 /*
-window.hpp
+  window.hpp
 
-10 pixel (window) = 1 m (kitti datasets) 
+  10 pixel (a opencv window) = 1 meter (kitti datasets)
+
+  the sub window shows the pos of objects from bird's eye view
 */
 
 #ifndef WINDOW_CPP
 #define WINDOW_CPP
 
+#include <sstream>
+#include <iostream>
 #include <opencv2/opencv.hpp>
 
 #define WINDOW_NAME "demo"
-#define WINDOW_HEIGHT 800
-#define WINDOW_WIDTH 600
-#define WINDOW_X_AXIS WINDOW_WIDTH / 2
-#define WINDOW_Z_AXIS WINDOW_HEIGHT - 100
+
+#define SUB_WINDOW_HEIGHT 500
+#define SUB_WINDOW_WIDTH 600
+#define SUB_WINDOW_X_AXIS SUB_WINDOW_WIDTH / 2
+#define SUB_WINDOW_Z_AXIS SUB_WINDOW_HEIGHT - 100
 
 #define BLACK cv::Scalar(0, 0, 0)
 #define BLUE cv::Scalar(255, 0, 0)
@@ -23,20 +28,17 @@ window.hpp
 class Window
 {
   cv::Mat window;
+  cv::Mat sub_window;
 
 public:
-  Window()
-  {
-    window = cv::Mat::zeros(WINDOW_HEIGHT, WINDOW_WIDTH, CV_8UC3);
-    Window::Refresh();
-  };
-
-  void Refresh();
+  void ReadImage(const unsigned int, const unsigned int);
+  void InitSubWindow();
+  void Concat();
   void Show();
   int WaitKey();
 
   void Rectangle(const float, const float, const float, const float);
-  void PutFrameNoText(const int, const int);
+  void PutImageIdText(const int, const int);
 
 private:
   int ToXWinCoord(const float);

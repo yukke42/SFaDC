@@ -30,7 +30,7 @@ Values    Name      Description
 
 struct Tracklet
 {
-    int frame_no;
+    unsigned int image_id;
     int track_id;
     std::string obj_type;
     int truncation;
