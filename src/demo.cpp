@@ -2,7 +2,8 @@
     demo.cpp
 */
 
-#include <iomanip>
+#include "boost/format.hpp"
+
 #include <iostream>
 #include <vector>
 
@@ -11,19 +12,16 @@
 
 int main(int argc, char *argv[])
 {
-    // if (argc < 2)
-    // {
-    //     std::cout << "Usage: ./demo IMAGE_SET_ID" << std::endl;
-    //     return 1;
-    // }
-    // const unsigned int imageSetsId = atoi(argv[1]);
+    if (argc < 2)
+    {
+        std::cout << "Usage: ./demo IMAGE_SET_ID" << std::endl;
+        return 1;
+    }
+    const unsigned int imageSetsId = atoi(argv[1]);
 
-    // const std::string datasetsRootDir = "../../datasets/training/";
-    // std::ostringstream image_sets_id_str, image_dirpath;
-    // image_sets_id_str << std::setw(4) << std::setfill('0') << imageSetsId;
-    // const std::string labelFilePath = datasetsRootDir + "label_02/" + image_sets_id_str.str() + ".txt";
-    // const std::string imagesetsDirPath = datasetsRootDir + "image_02/" + image_sets_id_str.str() + "/";
-    std::vector<Tracklet> tracklets = ParseLabelFile("../../datasets/training/label_02/0000.txt");
+    const std::string dataSetsRootDir = "../../datasets/training";
+    std::string labelFilePath = str(boost::format("%s/label_02/%04d.txt") % dataSetsRootDir % imageSetsId);
+    std::vector<Tracklet> tracklets = ParseLabelFile(labelFilePath);
 
     Window win;
 
@@ -40,10 +38,7 @@ int main(int argc, char *argv[])
             6. wait a keybord input
         */
 
-        std::ostringstream image_id_str;
-        std::string imagesetsDirPath = "../../datasets/training/image_02/0000/";
-        image_id_str << std::setw(6) << std::setfill('0') << image_id;
-        const std::string imageFilePath = imagesetsDirPath + image_id_str.str() + ".png";
+        std::string imageFilePath = str(boost::format("%s/image_02/%04d/%06d.png") % dataSetsRootDir % imageSetsId % image_id);
 
         win.ReadImage(imageFilePath);
         win.InitSubWindow();

@@ -4,6 +4,7 @@ FROM gcc:8.2
 RUN apt-get update && apt-get install -y --no-install-recommends \
     cmake build-essential \
     libopencv-dev \
-    libeigen3-dev 
+    libeigen3-dev \
+    libboost-dev
 
 WORKDIR /root/projects/src/build
