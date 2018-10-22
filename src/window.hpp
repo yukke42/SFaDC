@@ -30,7 +30,7 @@ class Window
   cv::Mat sub_window;
 
 public:
-  void ReadImage(const std::string, const unsigned int);
+  void ReadImage(const std::string);
   void InitSubWindow();
   void Concat();
   void Show();

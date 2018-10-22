@@ -2,6 +2,7 @@
     demo.cpp
 */
 
+#include <iomanip>
 #include <iostream>
 #include <vector>
 
@@ -10,19 +11,19 @@
 
 int main(int argc, char *argv[])
 {
-    if (argc < 2)
-    {
-        std::cout << "Usage: ./demo IMAGE_SET_ID" << std::endl;
-        return 1;
-    }
-    const unsigned int imageSetsId = atoi(argv[1]);
+    // if (argc < 2)
+    // {
+    //     std::cout << "Usage: ./demo IMAGE_SET_ID" << std::endl;
+    //     return 1;
+    // }
+    // const unsigned int imageSetsId = atoi(argv[1]);
 
-    const std::string datasetsRootDir = "../../datasets/training/";
-    std::ostringstream image_sets_id_str, image_dirpath;
-    image_sets_id_str << std::setw(4) << std::setfill('0') << imageSetsId;
-    const std::string labelFilePath = datasetsRootDir + "label_02/" + image_sets_id_str.str() + ".txt";
-    const std::string imagesetsDirPath = datasetsRootDir + "image_02/" + image_sets_id_str.str() + "/";
-    std::vector<Tracklet> tracklets = ParseLabelFile(labelFilePath);
+    // const std::string datasetsRootDir = "../../datasets/training/";
+    // std::ostringstream image_sets_id_str, image_dirpath;
+    // image_sets_id_str << std::setw(4) << std::setfill('0') << imageSetsId;
+    // const std::string labelFilePath = datasetsRootDir + "label_02/" + image_sets_id_str.str() + ".txt";
+    // const std::string imagesetsDirPath = datasetsRootDir + "image_02/" + image_sets_id_str.str() + "/";
+    std::vector<Tracklet> tracklets = ParseLabelFile("../../datasets/training/label_02/0000.txt");
 
     Window win;
 
@@ -39,7 +40,12 @@ int main(int argc, char *argv[])
             6. wait a keybord input
         */
 
-        win.ReadImage(imagesetsDirPath, image_id);
+        std::ostringstream image_id_str;
+        std::string imagesetsDirPath = "../../datasets/training/image_02/0000/";
+        image_id_str << std::setw(6) << std::setfill('0') << image_id;
+        const std::string imageFilePath = imagesetsDirPath + image_id_str.str() + ".png";
+
+        win.ReadImage(imageFilePath);
         win.InitSubWindow();
         win.PutImageIdText(image_id, imageLast);
 
@@ -50,9 +56,7 @@ int main(int argc, char *argv[])
             if (tracklets[obj_i].obj_type == "DontCare")
                 continue;
 
-            // calc obj yaw
-
-            std::cout << tracklets[obj_i].obj_type << tracklets[obj_i].yaw_3d << std::endl;
+            std::cout << tracklets[obj_i].obj_type << ": " << tracklets[obj_i].yaw_3d << std::endl;
 
             win.DrawBoundingBox(tracklets[obj_i].x_3d,
                                 tracklets[obj_i].z_3d,
@@ -64,7 +68,8 @@ int main(int argc, char *argv[])
         win.Concat();
         win.Show();
 
-        int pressed_key = win.WaitKey();
+        int pressed_key = win.WaitKey() & 0xff;
+        std::cout << "pressed key num: " << pressed_key << std::endl;
         if (pressed_key == 113) // q
         {
             break;

@@ -4,17 +4,10 @@
 
 #include "window.hpp"
 
-#include <sstream>
-#include <iostream>
+// #include <opencv2/core/core.hpp>
 
-#include <opencv2/core/core.hpp>
-
-void Window::ReadImage(const std::string imagesetsDirPath, const unsigned int imageId)
+void Window::ReadImage(const std::string imageFilePath)
 {
-    std::ostringstream image_id_str;
-    image_id_str << std::setw(6) << std::setfill('0') << imageId;
-    const std::string imageFilePath = imagesetsDirPath + image_id_str.str() + ".png";
-    std::cout << "Read image: " << imageFilePath << std::endl;
     window = cv::imread(imageFilePath);
 }
 
