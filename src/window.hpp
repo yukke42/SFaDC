@@ -29,6 +29,8 @@ class Window
   cv::Mat window;
   cv::Mat sub_window;
 
+  void Draw2DBoundingBox(const Eigen::Matrix2d, const cv::Scalar);
+
 public:
   void ReadImage(const std::string);
   void InitSubWindow();
@@ -36,7 +38,7 @@ public:
   void Show();
   int WaitKey();
 
-  void DrawBoundingBox(const double, const double, const double, const double, const double);
+  void DrawBoundingBox(const double, const double, const double, const double, const double, const std::string);
   void PutImageIdText(const int, const int);
 };
 

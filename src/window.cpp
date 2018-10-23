@@ -4,11 +4,10 @@
 
 #include "window.hpp"
 
-// #include <opencv2/core/core.hpp>
-
 void Window::ReadImage(const std::string imageFilePath)
 {
     window = cv::imread(imageFilePath);
+    // std::cout << "size: " << window.size();
 }
 
 void Window::InitSubWindow()
@@ -60,12 +59,61 @@ int Window::WaitKey()
     return cv::waitKey();
 }
 
-void Window::DrawBoundingBox(const double xCam, const double zCam, const double w, const double l, const double yaw)
+void Window::Draw2DBoundingBox(const Eigen::Matrix2d cornersMatrix, const cv::Scalar color)
+{
+}
+
+void Window::DrawBoundingBox(const double xCam, const double zCam,
+                             const double w, const double l,
+                             const double yaw, const std::string color)
 {
     /*
         1. calc the pos 
         2. transform camera coordinates to sub_window coordinates
         3. draw a rectangle
+    */
+
+    /*
+    Eigen::Matrix2d rotateMatrix;
+    const float angle_rad = -yaw + M_PI / 2;
+    rotateMatrix << std::cos(angle_rad), -std::sin(angle_rad),
+        std::sin(angle_rad), std::cos(angle_rad);
+    
+    Eigen::MatrixXd transformMatrix(2, 4);
+    transformMatrix << xCam, xCam, xCam, xCam,
+        zCam, zCam, zCam, zCam;
+
+    // std::cout << transformMatrix << std::endl;
+
+    Eigen::MatrixXd cornersMatrixObjCoord(2, 4);
+    cornersMatrixObjCoord << w / 2, -w / 2, -w / 2, w / 2,
+        l / 2, l / 2, -l / 2, -l / 2;
+
+    Eigen::MatrixXd cornersMatrixCamCoord(2, 4);
+    cornersMatrixCamCoord = rotateMatrix * cornersMatrixObjCoord + transformMatrix;
+
+    // std::cout << cornersMatrixCamCoord << std::endl;
+
+    rotateMatrix << 10, 0, 0, -10;
+    transformMatrix << SUB_WINDOW_X_AXIS, SUB_WINDOW_X_AXIS, SUB_WINDOW_X_AXIS, SUB_WINDOW_X_AXIS,
+        SUB_WINDOW_Z_AXIS, SUB_WINDOW_Z_AXIS, SUB_WINDOW_Z_AXIS, SUB_WINDOW_Z_AXIS;
+
+    Eigen::MatrixXi cornersMatrixWinCoord(2, 4);
+    cornersMatrixWinCoord = (rotateMatrix * cornersMatrixCamCoord + transformMatrix).cast<int>();
+
+    std::cout << cornersMatrixWinCoord << std::endl;
+    std::cout << cornersMatrixWinCoord(0) << std::endl;
+    std::cout << cornersMatrixWinCoord(7) << std::endl;
+
+    for (int i = 0; i < 4; i++)
+    {
+        int next_i = (i + 1) % 4;
+        cv::line(sub_window,
+                 cv::Point(cornersMatrixWinCoord(i + 0), cornersMatrixWinCoord(i + 1 * 4)),
+                 cv::Point(cornersMatrixWinCoord(next_i + 0), cornersMatrixWinCoord(next_i + 1 * 4)),
+                 RED,
+                 2);
+    }
     */
 
     Eigen::Vector2d objCenterCamCoord(xCam, zCam);
@@ -85,31 +133,42 @@ void Window::DrawBoundingBox(const double xCam, const double zCam, const double 
     Eigen::Vector2d bottomRightCamCoord = rotateMatrix * bottomRightObjCoord + objCenterCamCoord;
 
     Eigen::Vector2d winCoordCenter(SUB_WINDOW_X_AXIS, SUB_WINDOW_Z_AXIS);
-    rotateMatrix << 10, 0, 0, -10;
+    rotateMatrix << 5, 0, 0, -5;
     Eigen::Vector2i topRightWinCoord = (rotateMatrix * topRightCamCoord + winCoordCenter).cast<int>();
     Eigen::Vector2i topLeftWinCoord = (rotateMatrix * topLeftCamCoord + winCoordCenter).cast<int>();
     Eigen::Vector2i bottomLeftWinCoord = (rotateMatrix * bottomLeftCamCoord + winCoordCenter).cast<int>();
     Eigen::Vector2i bottomRightWinCoord = (rotateMatrix * bottomRightCamCoord + winCoordCenter).cast<int>();
 
+    std::string red = "red";
+    std::string blue = "blue";
+    std::string green = "green";
+    cv::Scalar COLOR;
+    if (color == red)
+        COLOR = RED;
+    else if (color == blue)
+        COLOR = BLUE;
+    else if (color == green)
+        COLOR = GREEN;
+
     cv::line(sub_window,
              cv::Point(topRightWinCoord[0], topRightWinCoord[1]),
              cv::Point(topLeftWinCoord[0], topLeftWinCoord[1]),
-             RED,
+             COLOR,
              2);
     cv::line(sub_window,
              cv::Point(topLeftWinCoord[0], topLeftWinCoord[1]),
              cv::Point(bottomLeftWinCoord[0], bottomLeftWinCoord[1]),
-             RED,
+             COLOR,
              2);
     cv::line(sub_window,
              cv::Point(bottomLeftWinCoord[0], bottomLeftWinCoord[1]),
              cv::Point(bottomRightWinCoord[0], bottomRightWinCoord[1]),
-             RED,
+             COLOR,
              2);
     cv::line(sub_window,
              cv::Point(bottomRightWinCoord[0], bottomRightWinCoord[1]),
              cv::Point(topRightWinCoord[0], topRightWinCoord[1]),
-             RED,
+             COLOR,
              2);
 }
 

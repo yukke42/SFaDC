@@ -12,6 +12,6 @@ include_directories( ${EIGEN3_INCLUDE_DIR} )
 find_package( Boost REQUIRED )
 include_directories( ${Boost_INCLUDE_DIR} )
 
-add_executable( demo demo.cpp window.cpp label_parser.cpp utils.cpp)
+add_executable( demo demo.cpp window.cpp label_parser.cpp utils.cpp calib_parser.cpp)
 
 target_link_libraries( demo ${OpenCV_LIBS} )
