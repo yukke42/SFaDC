@@ -38,8 +38,8 @@ struct Tracklet
     double alpha;
 
     double x_2d_left;
-    double x_2d_right;
     double y_2d_top;
+    double x_2d_right;
     double y_2d_bottom;
 
     double h_3d;

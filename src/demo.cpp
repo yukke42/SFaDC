@@ -41,6 +41,9 @@ int main(int argc, char *argv[])
     intrinsicCalibrationMatrix2D << calibrationMatrix3D(0, 0), calibrationMatrix3D(0, 1), calibrationMatrix3D(0, 2),
         calibrationMatrix3D(1, 0), calibrationMatrix3D(1, 1), calibrationMatrix3D(1, 2),
         calibrationMatrix3D(2, 0), calibrationMatrix3D(2, 1), calibrationMatrix3D(2, 2);
+
+    Eigen::Vector3d intrinsicT(calibrationMatrix3D(0, 3), calibrationMatrix3D(1, 3), calibrationMatrix3D(2, 3));
+
     // std::cout << CalibrationMatrix2D << std::endl;
     // std::cout << CalibrationMatrix2D.inverse() << std::endl;
 
@@ -58,6 +61,7 @@ int main(int argc, char *argv[])
             5. show the window
             6. wait a keybord input
         */
+        std::cout << std::endl;
 
         std::string imageFilePath = str(boost::format("%s/image_02/%04d/%06d.png") % dataSetsRootDir % imageSetsId % image_id);
 
@@ -72,35 +76,57 @@ int main(int argc, char *argv[])
             if (tracklets[obj_i].obj_type == "DontCare")
                 continue;
 
+            win.DrawBoundingBoxImage(
+                (int)tracklets[obj_i].x_2d_left,
+                (int)tracklets[obj_i].x_2d_right,
+                (int)tracklets[obj_i].y_2d_top,
+                (int)tracklets[obj_i].y_2d_bottom);
+
             // === calc the obj pos on the ground plane ===
             Eigen::Vector3d bottomCenterPixelCoord(
                 (tracklets[obj_i].x_2d_left + tracklets[obj_i].x_2d_right) / 2,
                 tracklets[obj_i].y_2d_bottom,
                 1);
 
-            const double theta = -0.03;
+            const double theta = 0;
             Eigen::Vector3d N(0, -std::cos(theta), std::sin(theta));
 
+            Eigen::Vector3d hoge = intrinsicCalibrationMatrix2D.inverse() * bottomCenterPixelCoord;
             Eigen::Vector3d bottomCenter3DBoundingBoxGrounPlane =
-                -HEIGHT * intrinsicCalibrationMatrix2D.inverse() * bottomCenterPixelCoord /
-                N.dot(intrinsicCalibrationMatrix2D.inverse() * bottomCenterPixelCoord);
+                -HEIGHT * hoge / N.dot(hoge);
 
             // std::cout << bottomCenter3DBoundingBoxGrounPlane << std::endl;
-            std::cout << boost::format("calc (x, z) = (%4d, %4d)") %
+            std::cout << boost::format("calc (x, y, z) = (%4d, %4d, %4d)") %
                              bottomCenter3DBoundingBoxGrounPlane(0) %
+                             bottomCenter3DBoundingBoxGrounPlane(1) %
                              bottomCenter3DBoundingBoxGrounPlane(2)
                       << std::endl;
-            std::cout << boost::format("true (x, z) = (%4d, %4d)") %
+            std::cout << boost::format("true (x, y, z) = (%4d, %4d, %4d)") %
                              tracklets[obj_i].x_3d %
+                             tracklets[obj_i].y_3d %
                              tracklets[obj_i].z_3d
                       << std::endl;
 
-            win.DrawBoundingBox(bottomCenter3DBoundingBoxGrounPlane(0),
-                                bottomCenter3DBoundingBoxGrounPlane(2),
+            Eigen::Matrix2d rotateMatrix;
+            const float angle_rad = -tracklets[obj_i].yaw_3d + M_PI / 2;
+            rotateMatrix << std::cos(angle_rad), -std::sin(angle_rad),
+                std::sin(angle_rad), std::cos(angle_rad);
+            Eigen::Vector2d objSize(tracklets[obj_i].w_3d / 2, tracklets[obj_i].l_3d / 2);
+            Eigen::Vector2d huga = rotateMatrix.inverse() * objSize;
+            win.DrawBoundingBox(bottomCenter3DBoundingBoxGrounPlane(0) + huga(0),
+                                bottomCenter3DBoundingBoxGrounPlane(2) + huga(1),
                                 tracklets[obj_i].w_3d,
                                 tracklets[obj_i].l_3d,
                                 tracklets[obj_i].yaw_3d,
                                 "green");
+            huga = rotateMatrix * objSize;
+
+            win.DrawBoundingBox(bottomCenter3DBoundingBoxGrounPlane(0) + huga(0),
+                                bottomCenter3DBoundingBoxGrounPlane(2) + huga(1),
+                                tracklets[obj_i].w_3d,
+                                tracklets[obj_i].l_3d,
+                                tracklets[obj_i].yaw_3d,
+                                "blue");
             // ==============================================
 
             // === calc 2d bounding box on the image plane ===
@@ -151,17 +177,17 @@ int main(int argc, char *argv[])
         win.Show();
 
         int pressed_key = win.WaitKey() & 0xff;
-        // std::cout << "pressed key num: " << pressed_key << std::endl;
+        std::cout << "pressed key num: " << pressed_key << std::endl;
         if (pressed_key == 113) // q
         {
             break;
         }
-        else if (pressed_key == 110) // n
+        else if (pressed_key == 83) // →
         {
             if (image_id < imageLast)
                 image_id++;
         }
-        else if (pressed_key == 112) // p
+        else if (pressed_key == 81) // ←
         {
             if (image_id > 1)
                 image_id--;

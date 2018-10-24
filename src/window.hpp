@@ -1,8 +1,6 @@
 /*
   window.hpp
 
-  10 pixel (a opencv window) = 1 meter (kitti datasets)
-
   the sub window shows the pos of objects from bird's eye view
 */
 
@@ -14,6 +12,8 @@
 
 #define WINDOW_NAME "demo"
 
+// 10 pixel (a window) = 1 meter (kitti datasets)
+#define PIXEL_M 10
 #define SUB_WINDOW_HEIGHT 500
 #define SUB_WINDOW_WIDTH 600
 #define SUB_WINDOW_X_AXIS SUB_WINDOW_WIDTH / 2
@@ -29,7 +29,7 @@ class Window
   cv::Mat window;
   cv::Mat sub_window;
 
-  void Draw2DBoundingBox(const Eigen::Matrix2d, const cv::Scalar);
+  void Draw2DBoundingBox(const Eigen::MatrixXi, const cv::Scalar);
 
 public:
   void ReadImage(const std::string);
@@ -37,6 +37,8 @@ public:
   void Concat();
   void Show();
   int WaitKey();
+
+  void DrawBoundingBoxImage(const int left, const int right, const int top, const int bottom);
 
   void DrawBoundingBox(const double, const double, const double, const double, const double, const std::string);
   void PutImageIdText(const int, const int);
