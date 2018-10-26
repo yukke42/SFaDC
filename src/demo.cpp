@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
     std::string calibFilePath = str(boost::format("%s/calib/%04d.txt") % dataSetsRootDir % imageSetsId);
     Eigen::MatrixXd calibrationMatrix3D = ParseCalibFile(calibFilePath);
 
-    std::cout << calibrationMatrix3D << std::endl;
+    // std::cout << calibrationMatrix3D << std::endl;
     // std::cout << CalibrationMatrix.rows() << std::endl;
     // std::cout << CalibrationMatrix.cols() << std::endl;
     // std::cout << CalibrationMatrix(0, 0) << std::endl;
@@ -69,12 +69,6 @@ int main(int argc, char *argv[])
 
         for (unsigned int obj_i = 1; obj_i < tracklets.size(); obj_i++)
         {
-            std::cout << tracklets[obj_i].obj_type
-                      << " truncated: "
-                      << tracklets[obj_i].truncation
-                      << " occluded: "
-                      << tracklets[obj_i].occlusion
-                      << std::endl;
 
             if (tracklets[obj_i].image_id != image_id)
                 continue;
@@ -83,40 +77,56 @@ int main(int argc, char *argv[])
             if (tracklets[obj_i].obj_type == "DontCare")
                 continue;
 
+            std::cout << tracklets[obj_i].obj_type
+                      << " truncated: "
+                      << tracklets[obj_i].truncation
+                      << " occluded: "
+                      << tracklets[obj_i].occlusion
+                      << std::endl;
+
             // === draw the 3D BB on the image plane ==
             // TODO: occlusionで 値が0(= fullu visible) になっているにもかかわらず
             //       一部しか見えていない物体が含まれる
             //       → 3D BB を線画するとおかしな図形が含まれてしまう
-            // TODO: 3D BBの線画が各フレーム毎にブレが生じているのがおかしい 
-            Eigen::MatrixXd corners3DBBObjCoord(4, 8);
+            // TODO: 3D BBの線画が各フレーム毎にブレが生じているのがおかしい
             double l = tracklets[obj_i].l_3d, h = tracklets[obj_i].h_3d, w = tracklets[obj_i].w_3d;
-            double x, y, z;
+            const std::vector<double> x_corners{l / 2, l / 2, -l / 2, -l / 2,
+                                                l / 2, l / 2, -l / 2, -l / 2};
+            const std::vector<double> y_corners{0, 0, 0, 0, -h, -h, -h, -h};
+            const std::vector<double> z_corners{w / 2, -w / 2, -w / 2, w / 2,
+                                                w / 2, -w / 2, -w / 2, w / 2};
+            Eigen::MatrixXd corners3DBBObjCoordMatrix(3, 8);
             for (int i = 0; i < 8; i++)
             {
-                if (i % 4 < 2)
-                    x = w / 2;
-                else
-                    x = -w / 2;
-
-                if (i < 4)
-                    y = 0;
-                else
-                    y = -h;
-
-                if (i % 4 == 1 || i % 4 == 2)
-                    z = l / 2;
-                else
-                    z = -l / 2;
-
-                corners3DBBObjCoord(0, i) = x + tracklets[obj_i].x_3d;
-                corners3DBBObjCoord(1, i) = y + tracklets[obj_i].y_3d;
-                corners3DBBObjCoord(2, i) = z + tracklets[obj_i].z_3d;
-                corners3DBBObjCoord(3, i) = 1;
+                corners3DBBObjCoordMatrix(0, i) = x_corners[i];
+                corners3DBBObjCoordMatrix(1, i) = y_corners[i];
+                corners3DBBObjCoordMatrix(2, i) = z_corners[i];
             }
+            std::cout << "objCoord " << corners3DBBObjCoordMatrix << std::endl;
+            Eigen::Matrix3d rotateYAxisMatrix;
+            const double yaw = tracklets[obj_i].yaw_3d;
+            rotateYAxisMatrix << std::cos(yaw), 0, std::sin(yaw),
+                0, 1, 0,
+                -std::sin(yaw), 0, std::cos(yaw);
+            std::cout << "rorate " << rotateYAxisMatrix << std::endl;
+
+            Eigen::MatrixXd rotatedCorners3DBBObjCoordMatrix(3, 8);
+            rotatedCorners3DBBObjCoordMatrix = rotateYAxisMatrix * corners3DBBObjCoordMatrix;
+            Eigen::MatrixXd corners3DBBHomoCamCoord(4, 8);
+            for (int i = 0; i < 8; i++)
+            {
+                corners3DBBHomoCamCoord(0, i) = rotatedCorners3DBBObjCoordMatrix(0, i) + tracklets[obj_i].x_3d;
+                corners3DBBHomoCamCoord(1, i) = rotatedCorners3DBBObjCoordMatrix(1, i) + tracklets[obj_i].y_3d;
+                corners3DBBHomoCamCoord(2, i) = rotatedCorners3DBBObjCoordMatrix(2, i) + tracklets[obj_i].z_3d;
+                corners3DBBHomoCamCoord(3, i) = 1;
+            }
+
             // std::cout << corners3DBBObjCoord << std::endl;
+            std::cout << "homo " << corners3DBBHomoCamCoord << std::endl;
+
             Eigen::MatrixXi corners3DBBPixCoord(3, 8);
-            corners3DBBPixCoord = (calibrationMatrix3D * corners3DBBObjCoord).cast<int>();
-            // std::cout << corners3DBBPixelCoord << std::endl;
+            corners3DBBPixCoord = (calibrationMatrix3D * corners3DBBHomoCamCoord).cast<int>();
+            std::cout << corners3DBBPixCoord << std::endl;
             win.Draw3DBoundingBoxOnImage(corners3DBBPixCoord);
             // ========================================
 
@@ -129,17 +139,19 @@ int main(int argc, char *argv[])
             // =========================================
 
             // === calc the obj pos on the ground plane ===
-            Eigen::Vector3d bottomCenterPixelCoord(
-                (tracklets[obj_i].x_2d_left + tracklets[obj_i].x_2d_right) / 2,
-                tracklets[obj_i].y_2d_bottom,
-                1);
+            // Eigen::Vector3d bottomCenterPixelCoord(
+            //     (tracklets[obj_i].x_2d_left + tracklets[obj_i].x_2d_right) / 2,
+            //     tracklets[obj_i].y_2d_bottom,
+            //     1);
 
-            const double theta = 0;
-            Eigen::Vector3d N(0, -std::cos(theta), std::sin(theta));
+            // const double theta = 0;
+            // Eigen::Vector3d N(0, -std::cos(theta), std::sin(theta));
 
-            Eigen::Vector3d hoge = intrinsicCalibrationMatrix2D.inverse() * bottomCenterPixelCoord;
-            Eigen::Vector3d bottomCenter3DBoundingBoxGrounPlane =
-                -HEIGHT * hoge / N.dot(hoge);
+            // Eigen::Vector3d hoge = intrinsicCalibrationMatrix2D.inverse() * bottomCenterPixelCoord;
+            // Eigen::Vector3d bottomCenter3DBoundingBoxGrounPlane =
+            //     -HEIGHT * hoge / N.dot(hoge);
+
+            // std::cout << bottomCenter3DBoundingBoxGrounPlane << std::endl;
 
             // std::cout << bottomCenter3DBoundingBoxGrounPlane << std::endl;
             // std::cout << boost::format("calc (x, y, z) = (%4d, %4d, %4d)") %
@@ -153,26 +165,26 @@ int main(int argc, char *argv[])
             //                  tracklets[obj_i].z_3d
             //           << std::endl;
 
-            Eigen::Matrix2d rotateMatrix;
-            const float angle_rad = -tracklets[obj_i].yaw_3d + M_PI / 2;
-            rotateMatrix << std::cos(angle_rad), -std::sin(angle_rad),
-                std::sin(angle_rad), std::cos(angle_rad);
-            Eigen::Vector2d objSize(tracklets[obj_i].w_3d / 2, tracklets[obj_i].l_3d / 2);
-            Eigen::Vector2d huga = rotateMatrix.inverse() * objSize;
-            win.DrawBoundingBox(bottomCenter3DBoundingBoxGrounPlane(0) + huga(0),
-                                bottomCenter3DBoundingBoxGrounPlane(2) + huga(1),
-                                tracklets[obj_i].w_3d,
-                                tracklets[obj_i].l_3d,
-                                tracklets[obj_i].yaw_3d,
-                                "green");
-            huga = rotateMatrix * objSize;
+            // Eigen::Matrix2d rotateMatrix;
+            // const float angle_rad = -tracklets[obj_i].yaw_3d + M_PI / 2;
+            // rotateMatrix << std::cos(angle_rad), -std::sin(angle_rad),
+            //     std::sin(angle_rad), std::cos(angle_rad);
+            // Eigen::Vector2d objSize(tracklets[obj_i].w_3d / 2, tracklets[obj_i].l_3d / 2);
+            // Eigen::Vector2d huga = rotateMatrix.inverse() * objSize;
+            // win.DrawBoundingBox(bottomCenter3DBoundingBoxGrounPlane(0) + huga(0),
+            //                     bottomCenter3DBoundingBoxGrounPlane(2) + huga(1),
+            //                     tracklets[obj_i].w_3d,
+            //                     tracklets[obj_i].l_3d,
+            //                     tracklets[obj_i].yaw_3d,
+            //                     "green");
+            // huga = rotateMatrix * objSize;
 
-            win.DrawBoundingBox(bottomCenter3DBoundingBoxGrounPlane(0) + huga(0),
-                                bottomCenter3DBoundingBoxGrounPlane(2) + huga(1),
-                                tracklets[obj_i].w_3d,
-                                tracklets[obj_i].l_3d,
-                                tracklets[obj_i].yaw_3d,
-                                "blue");
+            // win.DrawBoundingBox(bottomCenter3DBoundingBoxGrounPlane(0) + huga(0),
+            //                     bottomCenter3DBoundingBoxGrounPlane(2) + huga(1),
+            //                     tracklets[obj_i].w_3d,
+            //                     tracklets[obj_i].l_3d,
+            //                     tracklets[obj_i].yaw_3d,
+            //                     "blue");
             // ==============================================
 
             // === calc 2d bounding box on the image plane ===
@@ -211,12 +223,12 @@ int main(int argc, char *argv[])
             std::cout << centorBottom3DBoundingBoxGrounPlane << std::endl;
             */
 
-            win.DrawBoundingBox(tracklets[obj_i].x_3d,
-                                tracklets[obj_i].z_3d,
-                                tracklets[obj_i].w_3d,
-                                tracklets[obj_i].l_3d,
-                                tracklets[obj_i].yaw_3d,
-                                "red");
+            win.Draw2DBoundingBoxBirdsView(tracklets[obj_i].x_3d,
+                                           tracklets[obj_i].z_3d,
+                                           tracklets[obj_i].w_3d,
+                                           tracklets[obj_i].l_3d,
+                                           tracklets[obj_i].yaw_3d,
+                                           "red");
         }
 
         win.Concat();

@@ -29,10 +29,10 @@ Eigen::MatrixXd ParseCalibFile(std::string filepath)
             continue;
 
         std::vector<std::string> splited_row = split(row, ' ');
-
-        ret << std::stod(splited_row[1]), std::stod(splited_row[2]), std::stod(splited_row[3]), std::stod(splited_row[4]),
-            std::stod(splited_row[5]), std::stod(splited_row[6]), std::stod(splited_row[7]), std::stod(splited_row[8]),
-            std::stod(splited_row[9]), std::stod(splited_row[10]), std::stod(splited_row[11]), std::stod(splited_row[12]);
+        for (int i = 0; i < 12; i++)
+        {
+            ret(i / 4, i % 4) = std::stod(splited_row[i + 1]);
+        }
     }
 
     return ret;
