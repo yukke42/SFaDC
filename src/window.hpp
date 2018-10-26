@@ -38,7 +38,8 @@ public:
   void Show();
   int WaitKey();
 
-  void DrawBoundingBoxImage(const int left, const int right, const int top, const int bottom);
+  void Draw2DBoundingBoxOnImage(const int, const int, const int, const int);
+  void Draw3DBoundingBoxOnImage(const Eigen::MatrixXi);
 
   void DrawBoundingBox(const double, const double, const double, const double, const double, const std::string);
   void PutImageIdText(const int, const int);

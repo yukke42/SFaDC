@@ -71,28 +71,40 @@ int Window::WaitKey()
     return cv::waitKey();
 }
 
-void Window::DrawBoundingBoxImage(const int left, const int right, const int top, const int bottom)
+void Window::Draw2DBoundingBoxOnImage(const int left, const int right, const int top, const int bottom)
 {
-    cv::line(window,
-             cv::Point(right, top),
-             cv::Point(left, top),
-             RED,
-             2);
-    cv::line(window,
-             cv::Point(left, top),
-             cv::Point(left, bottom),
-             RED,
-             2);
-    cv::line(window,
-             cv::Point(left, bottom),
-             cv::Point(right, bottom),
-             RED,
-             2);
-    cv::line(window,
-             cv::Point(right, bottom),
-             cv::Point(right, top),
-             RED,
-             2);
+    cv::rectangle(window,
+                  cv::Point(right, top),
+                  cv::Point(left, bottom),
+                  RED);
+}
+
+void Window::Draw3DBoundingBoxOnImage(const Eigen::MatrixXi corners)
+{
+    const std::vector<std::vector<int>> connectedV{
+        {0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 6}, {0, 4}, {1, 5}, {2, 6}, {3, 7}};
+
+    int xPix1, yPix1, xPix2, yPix2;
+    for (const auto &pVec : connectedV)
+    {
+        // std::cout << pVec[0] << " " << pVec[1] << std::endl;
+        if (corners(2, pVec[0]) == 0 || corners(2, pVec[1]) == 0)
+        {
+            // std::cout << "zero" << std::endl;
+            std::cout << corners << std::endl;
+            break;
+        }
+        xPix1 = corners(0, pVec[0]) / corners(2, pVec[0]);
+        yPix1 = corners(1, pVec[0]) / corners(2, pVec[0]);
+        xPix2 = corners(0, pVec[1]) / corners(2, pVec[1]);
+        yPix2 = corners(1, pVec[1]) / corners(2, pVec[1]);
+        // std::cout << xPix1 << std::endl;
+        cv::line(window,
+                 cv::Point(xPix1, yPix1),
+                 cv::Point(xPix2, yPix2),
+                 GREEN,
+                 1);
+    }
 }
 
 void Window::DrawBoundingBox(const double xCam, const double zCam,

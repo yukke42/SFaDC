@@ -1,7 +1,5 @@
 /*
     demo.cpp
-
-    image set 0: [1242 x 375]
 */
 
 #include "boost/format.hpp"
@@ -61,7 +59,7 @@ int main(int argc, char *argv[])
             5. show the window
             6. wait a keybord input
         */
-        std::cout << std::endl;
+        std::cout << "Image: " << image_id << std::endl;
 
         std::string imageFilePath = str(boost::format("%s/image_02/%04d/%06d.png") % dataSetsRootDir % imageSetsId % image_id);
 
@@ -71,16 +69,64 @@ int main(int argc, char *argv[])
 
         for (unsigned int obj_i = 1; obj_i < tracklets.size(); obj_i++)
         {
+            std::cout << tracklets[obj_i].obj_type
+                      << " truncated: "
+                      << tracklets[obj_i].truncation
+                      << " occluded: "
+                      << tracklets[obj_i].occlusion
+                      << std::endl;
+
             if (tracklets[obj_i].image_id != image_id)
+                continue;
+            if (tracklets[obj_i].occlusion != 0)
                 continue;
             if (tracklets[obj_i].obj_type == "DontCare")
                 continue;
 
-            win.DrawBoundingBoxImage(
+            // === draw the 3D BB on the image plane ==
+            // TODO: occlusionで 値が0(= fullu visible) になっているにもかかわらず
+            //       一部しか見えていない物体が含まれる
+            //       → 3D BB を線画するとおかしな図形が含まれてしまう
+            // TODO: 3D BBの線画が各フレーム毎にブレが生じているのがおかしい 
+            Eigen::MatrixXd corners3DBBObjCoord(4, 8);
+            double l = tracklets[obj_i].l_3d, h = tracklets[obj_i].h_3d, w = tracklets[obj_i].w_3d;
+            double x, y, z;
+            for (int i = 0; i < 8; i++)
+            {
+                if (i % 4 < 2)
+                    x = w / 2;
+                else
+                    x = -w / 2;
+
+                if (i < 4)
+                    y = 0;
+                else
+                    y = -h;
+
+                if (i % 4 == 1 || i % 4 == 2)
+                    z = l / 2;
+                else
+                    z = -l / 2;
+
+                corners3DBBObjCoord(0, i) = x + tracklets[obj_i].x_3d;
+                corners3DBBObjCoord(1, i) = y + tracklets[obj_i].y_3d;
+                corners3DBBObjCoord(2, i) = z + tracklets[obj_i].z_3d;
+                corners3DBBObjCoord(3, i) = 1;
+            }
+            // std::cout << corners3DBBObjCoord << std::endl;
+            Eigen::MatrixXi corners3DBBPixCoord(3, 8);
+            corners3DBBPixCoord = (calibrationMatrix3D * corners3DBBObjCoord).cast<int>();
+            // std::cout << corners3DBBPixelCoord << std::endl;
+            win.Draw3DBoundingBoxOnImage(corners3DBBPixCoord);
+            // ========================================
+
+            // === draw the 2D BB on the image plane ===
+            win.Draw2DBoundingBoxOnImage(
                 (int)tracklets[obj_i].x_2d_left,
                 (int)tracklets[obj_i].x_2d_right,
                 (int)tracklets[obj_i].y_2d_top,
                 (int)tracklets[obj_i].y_2d_bottom);
+            // =========================================
 
             // === calc the obj pos on the ground plane ===
             Eigen::Vector3d bottomCenterPixelCoord(
@@ -96,16 +142,16 @@ int main(int argc, char *argv[])
                 -HEIGHT * hoge / N.dot(hoge);
 
             // std::cout << bottomCenter3DBoundingBoxGrounPlane << std::endl;
-            std::cout << boost::format("calc (x, y, z) = (%4d, %4d, %4d)") %
-                             bottomCenter3DBoundingBoxGrounPlane(0) %
-                             bottomCenter3DBoundingBoxGrounPlane(1) %
-                             bottomCenter3DBoundingBoxGrounPlane(2)
-                      << std::endl;
-            std::cout << boost::format("true (x, y, z) = (%4d, %4d, %4d)") %
-                             tracklets[obj_i].x_3d %
-                             tracklets[obj_i].y_3d %
-                             tracklets[obj_i].z_3d
-                      << std::endl;
+            // std::cout << boost::format("calc (x, y, z) = (%4d, %4d, %4d)") %
+            //                  bottomCenter3DBoundingBoxGrounPlane(0) %
+            //                  bottomCenter3DBoundingBoxGrounPlane(1) %
+            //                  bottomCenter3DBoundingBoxGrounPlane(2)
+            //           << std::endl;
+            // std::cout << boost::format("true (x, y, z) = (%4d, %4d, %4d)") %
+            //                  tracklets[obj_i].x_3d %
+            //                  tracklets[obj_i].y_3d %
+            //                  tracklets[obj_i].z_3d
+            //           << std::endl;
 
             Eigen::Matrix2d rotateMatrix;
             const float angle_rad = -tracklets[obj_i].yaw_3d + M_PI / 2;
@@ -176,21 +222,25 @@ int main(int argc, char *argv[])
         win.Concat();
         win.Show();
 
-        int pressed_key = win.WaitKey() & 0xff;
-        std::cout << "pressed key num: " << pressed_key << std::endl;
-        if (pressed_key == 113) // q
+        while (int pressed_key = (win.WaitKey() & 0xff))
         {
-            break;
-        }
-        else if (pressed_key == 83) // →
-        {
-            if (image_id < imageLast)
-                image_id++;
-        }
-        else if (pressed_key == 81) // ←
-        {
-            if (image_id > 1)
-                image_id--;
+            // std::cout << "pressed key num: " << pressed_key << std::endl;
+            if (pressed_key == 113) // q
+            {
+                return 0;
+            }
+            else if (pressed_key == 83) // →
+            {
+                if (image_id < imageLast)
+                    image_id++;
+                break;
+            }
+            else if (pressed_key == 81) // ←
+            {
+                if (image_id > 1)
+                    image_id--;
+                break;
+            }
         }
     }
 
