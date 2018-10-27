@@ -13,7 +13,7 @@
 #define WINDOW_NAME "demo"
 
 // 10 pixel (a window) = 1 meter (kitti datasets)
-#define PIXEL_M 10
+#define MERTER_TO_PIXEL 10
 #define SUB_WINDOW_HEIGHT 500
 #define SUB_WINDOW_WIDTH 600
 #define SUB_WINDOW_X_AXIS SUB_WINDOW_WIDTH / 2
@@ -41,7 +41,7 @@ public:
   void Draw2DBoundingBoxOnImage(const int, const int, const int, const int);
   void Draw3DBoundingBoxOnImage(const Eigen::MatrixXd);
 
-  void Draw2DBoundingBoxBirdsView(const double, const double, const double, const double, const double, const std::string);
+  void Draw2DBoundingBoxBirdsView(Eigen::MatrixXd, const std::string);
   void PutImageIdText(const int, const int);
 };
 

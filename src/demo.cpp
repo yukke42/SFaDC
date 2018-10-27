@@ -49,10 +49,12 @@ int main(int argc, char *argv[])
 
     unsigned int image_id = 0;
     const unsigned int imageLast = tracklets[tracklets.size() - 1].image_id;
+    std::string imageFilePath;
     double x, y, z, l, h, w, yaw;
     Eigen::MatrixXd corners3DBBObjHomoCoordMatrix(4, 8);
     Eigen::Matrix4d rotateYAxisMatrix(4, 4);
-    Eigen::MatrixXd corners3DBBPixCoord(3, 8);
+    Eigen::MatrixXd corners3DBBCamHomoCoordMatrix(4, 8);
+    Eigen::MatrixXd calibToWinMatrix(3, 4);
     while (1)
     {
         /*
@@ -63,9 +65,9 @@ int main(int argc, char *argv[])
             5. show the window
             6. wait a keybord input
         */
-        std::cout << "Image: " << image_id << std::endl;
 
-        std::string imageFilePath = str(boost::format("%s/image_02/%04d/%06d.png") % dataSetsRootDir % imageSetsId % image_id);
+        // std::cout << "Image: " << image_id << std::endl;
+        imageFilePath = str(boost::format("%s/image_02/%04d/%06d.png") % dataSetsRootDir % imageSetsId % image_id);
 
         win.ReadImage(imageFilePath);
         win.InitSubWindow();
@@ -76,27 +78,24 @@ int main(int argc, char *argv[])
 
             if (tracklets[obj_i].image_id != image_id)
                 continue;
-            if (tracklets[obj_i].occlusion != 0)
+            if (tracklets[obj_i].obj_type == "DontCare")
                 continue;
-            if (tracklets[obj_i].obj_type != "Car")
+            if (tracklets[obj_i].occluded > 2)
+                continue;
+            if (tracklets[obj_i].truncated == 1)
                 continue;
 
-            std::cout << tracklets[obj_i].obj_type
-                      << " truncated: "
-                      << tracklets[obj_i].truncation
-                      << " occluded: "
-                      << tracklets[obj_i].occlusion
-                      << std::endl;
+            // === calc the 3D BB on the camera coordinates ===
+            // 1. init homogeneous coordinates of a object
+            // 2. rotate it around y axis
+            // 3. transform it from object coordinates to camera coordinates
 
-            // === draw the 3D BB on the image plane ==
-            // TODO: occlusionで 値が0(= fullu visible) になっているにもかかわらず
-            //       一部しか見えていない物体が含まれる
-            //       → 3D BB を線画するとおかしな図形が含まれてしまう
             x = tracklets[obj_i].x_3d, y = tracklets[obj_i].y_3d, z = tracklets[obj_i].z_3d;
             l = tracklets[obj_i].l_3d, h = tracklets[obj_i].h_3d, w = tracklets[obj_i].w_3d;
-            std::cout << boost::format("x: %f y: %f z: %f\n") % z % y % z;
-            std::cout << boost::format("l: %f h: %f w: %f\n") % l % h % w;
-            std::cout << boost::format("yaw: %f\n") % tracklets[obj_i].yaw_3d;
+
+            // std::cout << boost::format("x: %f y: %f z: %f\n") % z % y % z;
+            // std::cout << boost::format("l: %f h: %f w: %f\n") % l % h % w;
+            // std::cout << boost::format("yaw: %f\n") % tracklets[obj_i].yaw_3d;
             const std::vector<double> x_corners{l / 2, l / 2, -l / 2, -l / 2,
                                                 l / 2, l / 2, -l / 2, -l / 2};
             const std::vector<double> y_corners{0, 0, 0, 0, -h, -h, -h, -h};
@@ -119,14 +118,16 @@ int main(int argc, char *argv[])
 
             for (int i = 0; i < 8; i++)
             {
-                corners3DBBObjHomoCoordMatrix(0, i) += x;
-                corners3DBBObjHomoCoordMatrix(1, i) += y;
-                corners3DBBObjHomoCoordMatrix(2, i) += z;
+                corners3DBBCamHomoCoordMatrix(0, i) = corners3DBBObjHomoCoordMatrix(0, i) + x;
+                corners3DBBCamHomoCoordMatrix(1, i) = corners3DBBObjHomoCoordMatrix(1, i) + y;
+                corners3DBBCamHomoCoordMatrix(2, i) = corners3DBBObjHomoCoordMatrix(2, i) + z;
+                corners3DBBCamHomoCoordMatrix(3, i) = 1;
             }
+            // ================================================
 
-            corners3DBBPixCoord = calibrationMatrix3D * corners3DBBObjHomoCoordMatrix;
-            win.Draw3DBoundingBoxOnImage(corners3DBBPixCoord);
-            // ========================================
+            // === draw the 3D BB on the image ===
+            win.Draw3DBoundingBoxOnImage(calibrationMatrix3D * corners3DBBCamHomoCoordMatrix);
+            // ===================================
 
             // === draw the 2D BB on the image plane ===
             win.Draw2DBoundingBoxOnImage(
@@ -135,6 +136,13 @@ int main(int argc, char *argv[])
                 (int)tracklets[obj_i].y_2d_top,
                 (int)tracklets[obj_i].y_2d_bottom);
             // =========================================
+
+            // === draw the 2D BB on the Bird's view window ===
+            calibToWinMatrix << MERTER_TO_PIXEL, 0, 0, SUB_WINDOW_X_AXIS,
+                0, 0, 0, 0,
+                0, 0, -MERTER_TO_PIXEL, SUB_WINDOW_Z_AXIS;
+            win.Draw2DBoundingBoxBirdsView(calibToWinMatrix * corners3DBBCamHomoCoordMatrix, "red");
+            // ================================================
 
             // === calc the obj pos on the ground plane ===
             // Eigen::Vector3d bottomCenterPixelCoord(
@@ -220,13 +228,6 @@ int main(int argc, char *argv[])
                 -HEIGHT / N.dot(centorBottom2DBoundingBoxImagePlane) * centorBottom2DBoundingBoxImagePlane;
             std::cout << centorBottom3DBoundingBoxGrounPlane << std::endl;
             */
-
-            win.Draw2DBoundingBoxBirdsView(tracklets[obj_i].x_3d,
-                                           tracklets[obj_i].z_3d,
-                                           tracklets[obj_i].w_3d,
-                                           tracklets[obj_i].l_3d,
-                                           tracklets[obj_i].yaw_3d,
-                                           "red");
         }
 
         win.Concat();

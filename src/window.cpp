@@ -4,10 +4,11 @@
 
 #include "window.hpp"
 
+#include "boost/format.hpp"
+
 void Window::ReadImage(const std::string imageFilePath)
 {
     window = cv::imread(imageFilePath);
-    // std::cout << "size: " << window.size();
 }
 
 void Window::InitSubWindow()
@@ -45,12 +46,20 @@ void Window::InitSubWindow()
              BLACK,
              2);
 
-    // 10, 20, 30 meter lines in depth
-    for (int i = 1; i < SUB_WINDOW_HEIGHT / (10 * PIXEL_M); i++)
+    // 10 meter interval lines in depth, width
+    for (int d = 10; d < SUB_WINDOW_HEIGHT / MERTER_TO_PIXEL; d += 10)
     {
         cv::line(sub_window,
-                 cv::Point(0, SUB_WINDOW_Z_AXIS - i * 10 * PIXEL_M),
-                 cv::Point(SUB_WINDOW_WIDTH, SUB_WINDOW_Z_AXIS - i * 10 * PIXEL_M),
+                 cv::Point(0, SUB_WINDOW_Z_AXIS - d * MERTER_TO_PIXEL),
+                 cv::Point(SUB_WINDOW_WIDTH, SUB_WINDOW_Z_AXIS - d * MERTER_TO_PIXEL),
+                 BLACK,
+                 1);
+    }
+    for (int w = 0; w < SUB_WINDOW_WIDTH / MERTER_TO_PIXEL; w += 10)
+    {
+        cv::line(sub_window,
+                 cv::Point(w * MERTER_TO_PIXEL, 0),
+                 cv::Point(w * MERTER_TO_PIXEL, SUB_WINDOW_HEIGHT),
                  BLACK,
                  1);
     }
@@ -87,18 +96,16 @@ void Window::Draw3DBoundingBoxOnImage(const Eigen::MatrixXd corners)
     int xPix1, yPix1, xPix2, yPix2;
     for (const auto &pVec : connectedV)
     {
-        // TODO
-        if (corners(2, pVec[0]) == 0 || corners(2, pVec[1]) == 0)
-        {
-            std::cout << "zero" << std::endl;
-            // std::cout << corners << std::endl;
-            break;
-        }
         xPix1 = corners(0, pVec[0]) / corners(2, pVec[0]);
         yPix1 = corners(1, pVec[0]) / corners(2, pVec[0]);
         xPix2 = corners(0, pVec[1]) / corners(2, pVec[1]);
         yPix2 = corners(1, pVec[1]) / corners(2, pVec[1]);
-        // std::cout << xPix1 << std::endl;
+
+        // std::cout << boost::format("x1: %f y1: %f x2: %f y2: %f\n") % xPix1 % yPix1 % xPix2 % yPix2;
+        // TODO 物体の位置が画角にほとんど含まれていない場合にマイナスになることがある
+        if (xPix1 < 0 || xPix2 < 0)
+            break;
+
         cv::line(window,
                  cv::Point(xPix1, yPix1),
                  cv::Point(xPix2, yPix2),
@@ -107,50 +114,8 @@ void Window::Draw3DBoundingBoxOnImage(const Eigen::MatrixXd corners)
     }
 }
 
-void Window::Draw2DBoundingBoxBirdsView(const double xCam, const double zCam,
-                                        const double w, const double l,
-                                        const double yaw, const std::string color)
+void Window::Draw2DBoundingBoxBirdsView(const Eigen::MatrixXd corners, const std::string color)
 {
-    /*
-        1. calc the pos 
-        2. transform camera coordinates to sub_window coordinates
-        3. draw a rectangle
-    */
-
-    Eigen::Matrix2d rotateMatrix;
-    Eigen::MatrixXd transformMatrix(2, 4);
-    const float angle_rad = yaw;
-    rotateMatrix << std::cos(angle_rad), -std::sin(angle_rad),
-        std::sin(angle_rad), std::cos(angle_rad);
-    for (int i = 0; i < 4; i++)
-    {
-        transformMatrix(0, i) = xCam;
-        transformMatrix(1, i) = zCam;
-    }
-
-    const std::vector<double> x_corners{l / 2, -l / 2, -l / 2, l / 2};
-    const std::vector<double> z_corners{w / 2, w / 2, -w / 2, -w / 2};
-    Eigen::MatrixXd cornersMatrixObjCoord(2, 4);
-    for (int i = 0; i < 4; i++)
-    {
-        cornersMatrixObjCoord(0, i) = x_corners[i];
-        cornersMatrixObjCoord(1, i) = z_corners[i];
-    }
-    // std::cout << cornersMatrixObjCoord << std::endl;
-
-    Eigen::MatrixXd cornersMatrixCamCoord(2, 4);
-    cornersMatrixCamCoord = rotateMatrix * cornersMatrixObjCoord + transformMatrix;
-
-    rotateMatrix << PIXEL_M, 0, 0, -PIXEL_M;
-    for (int j = 0; j < 4; j++)
-    {
-        transformMatrix(0, j) = SUB_WINDOW_X_AXIS;
-        transformMatrix(1, j) = SUB_WINDOW_Z_AXIS;
-    }
-
-    Eigen::MatrixXi cornersMatrixPixCoord(2, 4);
-    cornersMatrixPixCoord = (rotateMatrix * cornersMatrixCamCoord + transformMatrix).cast<int>();
-
     std::string red = "red";
     std::string blue = "blue";
     std::string green = "green";
@@ -164,16 +129,18 @@ void Window::Draw2DBoundingBoxBirdsView(const double xCam, const double zCam,
 
     const std::vector<std::vector<int>> connectedV{
         {0, 1}, {1, 2}, {2, 3}, {3, 0}};
-    int xPix1, yPix1, xPix2, yPix2;
+
+    int xPix1, zPix1, xPix2, zPix2;
     for (const auto &pVec : connectedV)
     {
-        xPix1 = cornersMatrixPixCoord(0, pVec[0]);
-        yPix1 = cornersMatrixPixCoord(1, pVec[0]);
-        xPix2 = cornersMatrixPixCoord(0, pVec[1]);
-        yPix2 = cornersMatrixPixCoord(1, pVec[1]);
+        xPix1 = corners(0, pVec[0]);
+        zPix1 = corners(2, pVec[0]);
+        xPix2 = corners(0, pVec[1]);
+        zPix2 = corners(2, pVec[1]);
+
         cv::line(sub_window,
-                 cv::Point(xPix1, yPix1),
-                 cv::Point(xPix2, yPix2),
+                 cv::Point(xPix1, zPix1),
+                 cv::Point(xPix2, zPix2),
                  COLOR,
                  2);
     }

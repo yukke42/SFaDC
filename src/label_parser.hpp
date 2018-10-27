@@ -33,8 +33,8 @@ struct Tracklet
     unsigned int image_id;
     int track_id;
     std::string obj_type;
-    int truncation;
-    int occlusion;
+    int truncated;
+    int occluded;
     double alpha;
 
     double x_2d_left;
