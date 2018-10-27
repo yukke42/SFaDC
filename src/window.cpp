@@ -79,14 +79,15 @@ void Window::Draw2DBoundingBoxOnImage(const int left, const int right, const int
                   RED);
 }
 
-void Window::Draw3DBoundingBoxOnImage(const Eigen::MatrixXi corners)
+void Window::Draw3DBoundingBoxOnImage(const Eigen::MatrixXd corners)
 {
     const std::vector<std::vector<int>> connectedV{
-        {0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 6}, {0, 4}, {1, 5}, {2, 6}, {3, 7}};
+        {0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}};
 
     int xPix1, yPix1, xPix2, yPix2;
     for (const auto &pVec : connectedV)
     {
+        // TODO
         if (corners(2, pVec[0]) == 0 || corners(2, pVec[1]) == 0)
         {
             std::cout << "zero" << std::endl;
@@ -118,7 +119,7 @@ void Window::Draw2DBoundingBoxBirdsView(const double xCam, const double zCam,
 
     Eigen::Matrix2d rotateMatrix;
     Eigen::MatrixXd transformMatrix(2, 4);
-    const float angle_rad = -yaw + M_PI / 2;
+    const float angle_rad = yaw;
     rotateMatrix << std::cos(angle_rad), -std::sin(angle_rad),
         std::sin(angle_rad), std::cos(angle_rad);
     for (int i = 0; i < 4; i++)
@@ -127,8 +128,8 @@ void Window::Draw2DBoundingBoxBirdsView(const double xCam, const double zCam,
         transformMatrix(1, i) = zCam;
     }
 
-    const std::vector<double> x_corners{w / 2, -w / 2, -w / 2, w / 2};
-    const std::vector<double> z_corners{l / 2, l / 2, -l / 2, -l / 2};
+    const std::vector<double> x_corners{l / 2, -l / 2, -l / 2, l / 2};
+    const std::vector<double> z_corners{w / 2, w / 2, -w / 2, -w / 2};
     Eigen::MatrixXd cornersMatrixObjCoord(2, 4);
     for (int i = 0; i < 4; i++)
     {

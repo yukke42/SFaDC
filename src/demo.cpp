@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     std::string labelFilePath = str(boost::format("%s/label_02/%04d.txt") % dataSetsRootDir % imageSetsId);
     std::vector<Tracklet> tracklets = ParseLabelFile(labelFilePath);
     std::string calibFilePath = str(boost::format("%s/calib/%04d.txt") % dataSetsRootDir % imageSetsId);
-    Eigen::MatrixXd calibrationMatrix3D = ParseCalibFile(calibFilePath);
+    const Eigen::MatrixXd calibrationMatrix3D = ParseCalibFile(calibFilePath);
 
     // std::cout << calibrationMatrix3D << std::endl;
     // std::cout << CalibrationMatrix.rows() << std::endl;
@@ -49,6 +49,10 @@ int main(int argc, char *argv[])
 
     unsigned int image_id = 0;
     const unsigned int imageLast = tracklets[tracklets.size() - 1].image_id;
+    double x, y, z, l, h, w, yaw;
+    Eigen::MatrixXd corners3DBBObjHomoCoordMatrix(4, 8);
+    Eigen::Matrix4d rotateYAxisMatrix(4, 4);
+    Eigen::MatrixXd corners3DBBPixCoord(3, 8);
     while (1)
     {
         /*
@@ -74,7 +78,7 @@ int main(int argc, char *argv[])
                 continue;
             if (tracklets[obj_i].occlusion != 0)
                 continue;
-            if (tracklets[obj_i].obj_type == "DontCare")
+            if (tracklets[obj_i].obj_type != "Car")
                 continue;
 
             std::cout << tracklets[obj_i].obj_type
@@ -88,45 +92,39 @@ int main(int argc, char *argv[])
             // TODO: occlusionで 値が0(= fullu visible) になっているにもかかわらず
             //       一部しか見えていない物体が含まれる
             //       → 3D BB を線画するとおかしな図形が含まれてしまう
-            // TODO: 3D BBの線画が各フレーム毎にブレが生じているのがおかしい
-            double l = tracklets[obj_i].l_3d, h = tracklets[obj_i].h_3d, w = tracklets[obj_i].w_3d;
+            x = tracklets[obj_i].x_3d, y = tracklets[obj_i].y_3d, z = tracklets[obj_i].z_3d;
+            l = tracklets[obj_i].l_3d, h = tracklets[obj_i].h_3d, w = tracklets[obj_i].w_3d;
+            std::cout << boost::format("x: %f y: %f z: %f\n") % z % y % z;
+            std::cout << boost::format("l: %f h: %f w: %f\n") % l % h % w;
+            std::cout << boost::format("yaw: %f\n") % tracklets[obj_i].yaw_3d;
             const std::vector<double> x_corners{l / 2, l / 2, -l / 2, -l / 2,
                                                 l / 2, l / 2, -l / 2, -l / 2};
             const std::vector<double> y_corners{0, 0, 0, 0, -h, -h, -h, -h};
             const std::vector<double> z_corners{w / 2, -w / 2, -w / 2, w / 2,
                                                 w / 2, -w / 2, -w / 2, w / 2};
-            Eigen::MatrixXd corners3DBBObjCoordMatrix(3, 8);
             for (int i = 0; i < 8; i++)
             {
-                corners3DBBObjCoordMatrix(0, i) = x_corners[i];
-                corners3DBBObjCoordMatrix(1, i) = y_corners[i];
-                corners3DBBObjCoordMatrix(2, i) = z_corners[i];
+                corners3DBBObjHomoCoordMatrix(0, i) = x_corners[i];
+                corners3DBBObjHomoCoordMatrix(1, i) = y_corners[i];
+                corners3DBBObjHomoCoordMatrix(2, i) = z_corners[i];
+                corners3DBBObjHomoCoordMatrix(3, i) = 1;
             }
-            std::cout << "objCoord " << corners3DBBObjCoordMatrix << std::endl;
-            Eigen::Matrix3d rotateYAxisMatrix;
-            const double yaw = tracklets[obj_i].yaw_3d;
-            rotateYAxisMatrix << std::cos(yaw), 0, std::sin(yaw),
-                0, 1, 0,
-                -std::sin(yaw), 0, std::cos(yaw);
-            std::cout << "rorate " << rotateYAxisMatrix << std::endl;
 
-            Eigen::MatrixXd rotatedCorners3DBBObjCoordMatrix(3, 8);
-            rotatedCorners3DBBObjCoordMatrix = rotateYAxisMatrix * corners3DBBObjCoordMatrix;
-            Eigen::MatrixXd corners3DBBHomoCamCoord(4, 8);
+            yaw = tracklets[obj_i].yaw_3d;
+            rotateYAxisMatrix << std::cos(yaw), 0, std::sin(yaw), 0,
+                0, 1, 0, 0,
+                -std::sin(yaw), 0, std::cos(yaw), 0,
+                0, 0, 0, 1;
+            corners3DBBObjHomoCoordMatrix = rotateYAxisMatrix * corners3DBBObjHomoCoordMatrix;
+
             for (int i = 0; i < 8; i++)
             {
-                corners3DBBHomoCamCoord(0, i) = rotatedCorners3DBBObjCoordMatrix(0, i) + tracklets[obj_i].x_3d;
-                corners3DBBHomoCamCoord(1, i) = rotatedCorners3DBBObjCoordMatrix(1, i) + tracklets[obj_i].y_3d;
-                corners3DBBHomoCamCoord(2, i) = rotatedCorners3DBBObjCoordMatrix(2, i) + tracklets[obj_i].z_3d;
-                corners3DBBHomoCamCoord(3, i) = 1;
+                corners3DBBObjHomoCoordMatrix(0, i) += x;
+                corners3DBBObjHomoCoordMatrix(1, i) += y;
+                corners3DBBObjHomoCoordMatrix(2, i) += z;
             }
 
-            // std::cout << corners3DBBObjCoord << std::endl;
-            std::cout << "homo " << corners3DBBHomoCamCoord << std::endl;
-
-            Eigen::MatrixXi corners3DBBPixCoord(3, 8);
-            corners3DBBPixCoord = (calibrationMatrix3D * corners3DBBHomoCamCoord).cast<int>();
-            std::cout << corners3DBBPixCoord << std::endl;
+            corners3DBBPixCoord = calibrationMatrix3D * corners3DBBObjHomoCoordMatrix;
             win.Draw3DBoundingBoxOnImage(corners3DBBPixCoord);
             // ========================================
 

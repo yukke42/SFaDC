@@ -39,7 +39,7 @@ public:
   int WaitKey();
 
   void Draw2DBoundingBoxOnImage(const int, const int, const int, const int);
-  void Draw3DBoundingBoxOnImage(const Eigen::MatrixXi);
+  void Draw3DBoundingBoxOnImage(const Eigen::MatrixXd);
 
   void Draw2DBoundingBoxBirdsView(const double, const double, const double, const double, const double, const std::string);
   void PutImageIdText(const int, const int);
