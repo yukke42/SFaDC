@@ -29,15 +29,15 @@ int main(int argc, char *argv[])
     const std::string dataSetsRootDir = "../../datasets/training";
     const std::string calibFilePath = str(boost::format("%s/calib/%04d.txt") % dataSetsRootDir % imageSetsId);
     const std::string labelFilePath = str(boost::format("%s/label_02/%04d.txt") % dataSetsRootDir % imageSetsId);
-    const Eigen::MatrixXd calibToImageMatrix3D = ParseCalibFile(calibFilePath);
+    const Eigen::MatrixXd calibToImageAffineMatrix = ParseCalibFile(calibFilePath);
     const std::vector<Tracklet> tracklets = ParseLabelFile(labelFilePath);
 
-    Eigen::MatrixXd calibToImageRotateMatrix3D(3, 3);
+    Eigen::MatrixXd calibToImageRotateMatrix(3, 3);
     for (int i = 0; i < 3; i++)
     {
         for (int j = 0; j < 3; j++)
         {
-            calibToImageRotateMatrix3D(i, j) = calibToImageMatrix3D(i, j);
+            calibToImageRotateMatrix(i, j) = calibToImageAffineMatrix(i, j);
         }
     }
 
@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
             // ================================================
 
             // === draw the BB on the image ===
-            win.Draw3DBoundingBoxOnImage(calibToImageMatrix3D * corners3DBBCamHomoCoordMatrix);
+            win.Draw3DBoundingBoxOnImage(calibToImageAffineMatrix * corners3DBBCamHomoCoordMatrix);
 
             win.Draw2DBoundingBoxOnImage((int)tracklets[obj_i].x_2d_left,
                                          (int)tracklets[obj_i].x_2d_right,
@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
 
             // back-projection from 2D to 3D
             Eigen::Vector3d calibrated =
-                calibToImageRotateMatrix3D.inverse() * bottomCenter2DBBPixHomoCoord;
+                calibToImageRotateMatrix.inverse() * bottomCenter2DBBPixHomoCoord;
             Eigen::Vector3d bottomCenter3DBBCamCoord =
                 -HEIGHT * calibrated / N.dot(calibrated);
 
