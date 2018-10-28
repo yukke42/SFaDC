@@ -4,14 +4,10 @@
 
 #include "window.hpp"
 
-void Window::ReadImage(const unsigned int imageSetsId, const unsigned int imageId)
+#include "boost/format.hpp"
+
+void Window::ReadImage(const std::string imageFilePath)
 {
-    const std::string imagesDirRoot = "../../mini_datasets/training/image_02/";
-    std::ostringstream image_sets_id_str, image_id_str;
-    image_sets_id_str << std::setw(4) << std::setfill('0') << imageSetsId;
-    image_id_str << std::setw(6) << std::setfill('0') << imageId;
-    const std::string imageFilePath = imagesDirRoot + image_sets_id_str.str() + "/" + image_id_str.str() + ".png";
-    std::cout << "Read image: " << imageFilePath << std::endl;
     window = cv::imread(imageFilePath);
 }
 
@@ -37,16 +33,36 @@ void Window::InitSubWindow()
     cv::line(sub_window,
              cv::Point(0, SUB_WINDOW_Z_AXIS),
              cv::Point(SUB_WINDOW_WIDTH, SUB_WINDOW_Z_AXIS),
-             BLACK);
+             BLACK,
+             2);
     cv::line(sub_window,
              cv::Point(SUB_WINDOW_X_AXIS, 0),
              cv::Point(SUB_WINDOW_X_AXIS, SUB_WINDOW_HEIGHT),
-             BLACK);
+             BLACK,
+             2);
     cv::line(sub_window,
              cv::Point(SUB_WINDOW_WIDTH, 0),
              cv::Point(SUB_WINDOW_WIDTH, SUB_WINDOW_HEIGHT),
              BLACK,
              2);
+
+    // 10 meter interval lines in depth, width
+    for (int d = 10; d < SUB_WINDOW_HEIGHT / METER_TO_PIXEL; d += 10)
+    {
+        cv::line(sub_window,
+                 cv::Point(0, SUB_WINDOW_Z_AXIS - d * METER_TO_PIXEL),
+                 cv::Point(SUB_WINDOW_WIDTH, SUB_WINDOW_Z_AXIS - d * METER_TO_PIXEL),
+                 BLACK,
+                 1);
+    }
+    for (int w = 0; w < SUB_WINDOW_WIDTH / METER_TO_PIXEL; w += 10)
+    {
+        cv::line(sub_window,
+                 cv::Point(w * METER_TO_PIXEL, 0),
+                 cv::Point(w * METER_TO_PIXEL, SUB_WINDOW_HEIGHT),
+                 BLACK,
+                 1);
+    }
 }
 
 void Window::Concat()
@@ -64,37 +80,74 @@ int Window::WaitKey()
     return cv::waitKey();
 }
 
-void Window::Rectangle(const float xCam, const float zCam, const float w, const float l)
+void Window::Draw2DBoundingBoxOnImage(const int left, const int right, const int top, const int bottom)
 {
-    /*
-        1. calc the pos and angle of a object (TODO)
-        2. transform camera coordinates to sub_window coordinates
-        3. draw a rectangle
-    */
-
-    const int xWinBottomLeft = ToXWinCoord(xCam - w / 2);
-    const int zWinBottomLeft = ToZWinCoord(zCam - l / 2);
-    const int xWinTopRight = ToXWinCoord(xCam + w / 2);
-    const int zWinTopRight = ToZWinCoord(zCam + l / 2);
-
-    cv::rectangle(sub_window,
-                  cv::Point(xWinBottomLeft, zWinBottomLeft),
-                  cv::Point(xWinTopRight, zWinTopRight),
+    cv::rectangle(window,
+                  cv::Point(right, top),
+                  cv::Point(left, bottom),
                   RED);
+}
+
+void Window::Draw3DBoundingBoxOnImage(const Eigen::MatrixXd corners)
+{
+    const std::vector<std::vector<int>> connectedV{
+        {0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}};
+
+    int xPix1, yPix1, xPix2, yPix2;
+    for (const auto &pVec : connectedV)
+    {
+        xPix1 = corners(0, pVec[0]) / corners(2, pVec[0]);
+        yPix1 = corners(1, pVec[0]) / corners(2, pVec[0]);
+        xPix2 = corners(0, pVec[1]) / corners(2, pVec[1]);
+        yPix2 = corners(1, pVec[1]) / corners(2, pVec[1]);
+
+        // std::cout << boost::format("x1: %f y1: %f x2: %f y2: %f\n") % xPix1 % yPix1 % xPix2 % yPix2;
+        // TODO 物体の位置が画角にほとんど含まれていない場合にマイナスになることがある
+        if (xPix1 < 0 || xPix2 < 0)
+            break;
+
+        cv::line(window,
+                 cv::Point(xPix1, yPix1),
+                 cv::Point(xPix2, yPix2),
+                 GREEN,
+                 1);
+    }
+}
+
+void Window::Draw2DBoundingBoxBirdsView(const Eigen::MatrixXd corners, const std::string color)
+{
+    std::string red = "red";
+    std::string blue = "blue";
+    std::string green = "green";
+    cv::Scalar COLOR;
+    if (color == red)
+        COLOR = RED;
+    else if (color == blue)
+        COLOR = BLUE;
+    else if (color == green)
+        COLOR = GREEN;
+
+    const std::vector<std::vector<int>> connectedV{
+        {0, 1}, {1, 2}, {2, 3}, {3, 0}};
+
+    int xPix1, zPix1, xPix2, zPix2;
+    for (const auto &pVec : connectedV)
+    {
+        xPix1 = corners(0, pVec[0]);
+        zPix1 = corners(2, pVec[0]);
+        xPix2 = corners(0, pVec[1]);
+        zPix2 = corners(2, pVec[1]);
+
+        cv::line(sub_window,
+                 cv::Point(xPix1, zPix1),
+                 cv::Point(xPix2, zPix2),
+                 COLOR,
+                 2);
+    }
 }
 
 void Window::PutImageIdText(const int frameNo, const int fraameLast)
 {
     std::string text = std::to_string(frameNo) + " / " + std::to_string(fraameLast);
     cv::putText(sub_window, text, cv::Point(10, 40), cv::FONT_HERSHEY_SIMPLEX, 1, BLACK);
-}
-
-int Window::ToXWinCoord(const float xCam)
-{
-    return (int)(xCam * 10) + SUB_WINDOW_X_AXIS;
-}
-
-int Window::ToZWinCoord(const float zCam)
-{
-    return -(int)(zCam * 10) + SUB_WINDOW_Z_AXIS;
 }
