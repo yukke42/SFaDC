@@ -1,6 +1,7 @@
 # (WIP) SFaDC
 
-The implementation of ["Joint SFM and Detection Cues for Monocular 3D Localization in Road Scenes"](https://www.cv-foundation.org/openaccess/content_cvpr_2015/html/Song_Joint_SFM_and_2015_CVPR_paper.html) 
+The implementation of ["Joint SFM and Detection Cues for Monocular 3D Localization in Road Scenes"](https://www.cv-foundation.org/openaccess/content_cvpr_2015/html/Song_Joint_SFM_and_2015_CVPR_paper.html) .  
+Unzip and put them under `datasets` directory.
 
 
 
@@ -10,6 +11,8 @@ The implementation of ["Joint SFM and Detection Cues for Monocular 3D Localizati
 - Ubuntu 
 - docker
 - docker-compose
+
+downlaod left color images, camera calibration matrices, and training labels of [KITTI tracking datasets](http://www.cvlibs.net/datasets/kitti/eval_tracking.php)
 
 
 
