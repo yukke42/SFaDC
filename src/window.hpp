@@ -13,7 +13,7 @@
 #define WINDOW_NAME "demo"
 
 // 10 pixel (a window) = 1 meter (kitti datasets)
-#define MERTER_TO_PIXEL 10
+#define METER_TO_PIXEL 10
 #define SUB_WINDOW_HEIGHT 500
 #define SUB_WINDOW_WIDTH 600
 #define SUB_WINDOW_X_AXIS SUB_WINDOW_WIDTH / 2

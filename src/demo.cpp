@@ -29,18 +29,18 @@ int main(int argc, char *argv[])
     std::string labelFilePath = str(boost::format("%s/label_02/%04d.txt") % dataSetsRootDir % imageSetsId);
     std::vector<Tracklet> tracklets = ParseLabelFile(labelFilePath);
     std::string calibFilePath = str(boost::format("%s/calib/%04d.txt") % dataSetsRootDir % imageSetsId);
-    const Eigen::MatrixXd calibrationMatrix3D = ParseCalibFile(calibFilePath);
+    const Eigen::MatrixXd calibToImageMatrix3D = ParseCalibFile(calibFilePath);
 
     // std::cout << calibrationMatrix3D << std::endl;
     // std::cout << CalibrationMatrix.rows() << std::endl;
     // std::cout << CalibrationMatrix.cols() << std::endl;
     // std::cout << CalibrationMatrix(0, 0) << std::endl;
-    Eigen::MatrixXd intrinsicCalibrationMatrix2D(3, 3);
-    intrinsicCalibrationMatrix2D << calibrationMatrix3D(0, 0), calibrationMatrix3D(0, 1), calibrationMatrix3D(0, 2),
-        calibrationMatrix3D(1, 0), calibrationMatrix3D(1, 1), calibrationMatrix3D(1, 2),
-        calibrationMatrix3D(2, 0), calibrationMatrix3D(2, 1), calibrationMatrix3D(2, 2);
+    // Eigen::MatrixXd intrinsicCalibrationMatrix2D(3, 3);
+    // intrinsicCalibrationMatrix2D << calibrationMatrix3D(0, 0), calibrationMatrix3D(0, 1), calibrationMatrix3D(0, 2),
+    //     calibrationMatrix3D(1, 0), calibrationMatrix3D(1, 1), calibrationMatrix3D(1, 2),
+    //     calibrationMatrix3D(2, 0), calibrationMatrix3D(2, 1), calibrationMatrix3D(2, 2);
 
-    Eigen::Vector3d intrinsicT(calibrationMatrix3D(0, 3), calibrationMatrix3D(1, 3), calibrationMatrix3D(2, 3));
+    // Eigen::Vector3d intrinsicT(calibrationMatrix3D(0, 3), calibrationMatrix3D(1, 3), calibrationMatrix3D(2, 3));
 
     // std::cout << CalibrationMatrix2D << std::endl;
     // std::cout << CalibrationMatrix2D.inverse() << std::endl;
@@ -52,9 +52,9 @@ int main(int argc, char *argv[])
     std::string imageFilePath;
     double x, y, z, l, h, w, yaw;
     Eigen::MatrixXd corners3DBBObjHomoCoordMatrix(4, 8);
-    Eigen::Matrix4d rotateYAxisMatrix(4, 4);
     Eigen::MatrixXd corners3DBBCamHomoCoordMatrix(4, 8);
-    Eigen::MatrixXd calibToWinMatrix(3, 4);
+    Eigen::Matrix4d affineYAxisMatrix(4, 4);
+    Eigen::MatrixXd calibToBirdsViewMatrix(3, 4);
     while (1)
     {
         /*
@@ -110,38 +110,28 @@ int main(int argc, char *argv[])
             }
 
             yaw = tracklets[obj_i].yaw_3d;
-            rotateYAxisMatrix << std::cos(yaw), 0, std::sin(yaw), 0,
-                0, 1, 0, 0,
-                -std::sin(yaw), 0, std::cos(yaw), 0,
+            affineYAxisMatrix << std::cos(yaw), 0, std::sin(yaw), x,
+                0, 1, 0, y,
+                -std::sin(yaw), 0, std::cos(yaw), z,
                 0, 0, 0, 1;
-            corners3DBBObjHomoCoordMatrix = rotateYAxisMatrix * corners3DBBObjHomoCoordMatrix;
-
-            for (int i = 0; i < 8; i++)
-            {
-                corners3DBBCamHomoCoordMatrix(0, i) = corners3DBBObjHomoCoordMatrix(0, i) + x;
-                corners3DBBCamHomoCoordMatrix(1, i) = corners3DBBObjHomoCoordMatrix(1, i) + y;
-                corners3DBBCamHomoCoordMatrix(2, i) = corners3DBBObjHomoCoordMatrix(2, i) + z;
-                corners3DBBCamHomoCoordMatrix(3, i) = 1;
-            }
+            corners3DBBCamHomoCoordMatrix = affineYAxisMatrix * corners3DBBObjHomoCoordMatrix;
             // ================================================
 
-            // === draw the 3D BB on the image ===
-            win.Draw3DBoundingBoxOnImage(calibrationMatrix3D * corners3DBBCamHomoCoordMatrix);
-            // ===================================
+            // === draw the BB on the image ===
+            win.Draw3DBoundingBoxOnImage(calibToImageMatrix3D * corners3DBBCamHomoCoordMatrix);
 
-            // === draw the 2D BB on the image plane ===
             win.Draw2DBoundingBoxOnImage(
                 (int)tracklets[obj_i].x_2d_left,
                 (int)tracklets[obj_i].x_2d_right,
                 (int)tracklets[obj_i].y_2d_top,
                 (int)tracklets[obj_i].y_2d_bottom);
-            // =========================================
+            // =================================
 
             // === draw the 2D BB on the Bird's view window ===
-            calibToWinMatrix << MERTER_TO_PIXEL, 0, 0, SUB_WINDOW_X_AXIS,
+            calibToBirdsViewMatrix << METER_TO_PIXEL, 0, 0, SUB_WINDOW_X_AXIS,
                 0, 0, 0, 0,
-                0, 0, -MERTER_TO_PIXEL, SUB_WINDOW_Z_AXIS;
-            win.Draw2DBoundingBoxBirdsView(calibToWinMatrix * corners3DBBCamHomoCoordMatrix, "red");
+                0, 0, -METER_TO_PIXEL, SUB_WINDOW_Z_AXIS;
+            win.Draw2DBoundingBoxBirdsView(calibToBirdsViewMatrix * corners3DBBCamHomoCoordMatrix, "red");
             // ================================================
 
             // === calc the obj pos on the ground plane ===

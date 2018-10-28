@@ -47,19 +47,19 @@ void Window::InitSubWindow()
              2);
 
     // 10 meter interval lines in depth, width
-    for (int d = 10; d < SUB_WINDOW_HEIGHT / MERTER_TO_PIXEL; d += 10)
+    for (int d = 10; d < SUB_WINDOW_HEIGHT / METER_TO_PIXEL; d += 10)
     {
         cv::line(sub_window,
-                 cv::Point(0, SUB_WINDOW_Z_AXIS - d * MERTER_TO_PIXEL),
-                 cv::Point(SUB_WINDOW_WIDTH, SUB_WINDOW_Z_AXIS - d * MERTER_TO_PIXEL),
+                 cv::Point(0, SUB_WINDOW_Z_AXIS - d * METER_TO_PIXEL),
+                 cv::Point(SUB_WINDOW_WIDTH, SUB_WINDOW_Z_AXIS - d * METER_TO_PIXEL),
                  BLACK,
                  1);
     }
-    for (int w = 0; w < SUB_WINDOW_WIDTH / MERTER_TO_PIXEL; w += 10)
+    for (int w = 0; w < SUB_WINDOW_WIDTH / METER_TO_PIXEL; w += 10)
     {
         cv::line(sub_window,
-                 cv::Point(w * MERTER_TO_PIXEL, 0),
-                 cv::Point(w * MERTER_TO_PIXEL, SUB_WINDOW_HEIGHT),
+                 cv::Point(w * METER_TO_PIXEL, 0),
+                 cv::Point(w * METER_TO_PIXEL, SUB_WINDOW_HEIGHT),
                  BLACK,
                  1);
     }
