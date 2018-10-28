@@ -109,8 +109,7 @@ void Window::Draw3DBoundingBoxOnImage(const Eigen::MatrixXd corners)
         cv::line(window,
                  cv::Point(xPix1, yPix1),
                  cv::Point(xPix2, yPix2),
-                 GREEN,
-                 1);
+                 GREEN);
     }
 }
 
@@ -130,13 +129,20 @@ void Window::Draw2DBoundingBoxBirdsView(const Eigen::MatrixXd corners, const std
     const std::vector<std::vector<int>> connectedV{
         {0, 1}, {1, 2}, {2, 3}, {3, 0}};
 
+    Eigen::MatrixXd calibToBirdsViewMatrix(3, 4);
+    calibToBirdsViewMatrix << METER_TO_PIXEL, 0, 0, SUB_WINDOW_X_AXIS,
+        0, 0, 0, 0,
+        0, 0, -METER_TO_PIXEL, SUB_WINDOW_Z_AXIS;
+
+    Eigen::MatrixXd calibcorners = calibToBirdsViewMatrix * corners;
+
     int xPix1, zPix1, xPix2, zPix2;
     for (const auto &pVec : connectedV)
     {
-        xPix1 = corners(0, pVec[0]);
-        zPix1 = corners(2, pVec[0]);
-        xPix2 = corners(0, pVec[1]);
-        zPix2 = corners(2, pVec[1]);
+        xPix1 = calibcorners(0, pVec[0]);
+        zPix1 = calibcorners(2, pVec[0]);
+        xPix2 = calibcorners(0, pVec[1]);
+        zPix2 = calibcorners(2, pVec[1]);
 
         cv::line(sub_window,
                  cv::Point(xPix1, zPix1),
